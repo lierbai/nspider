@@ -1,9 +1,12 @@
 package main
 
 import (
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 
+	"github.com/bitly/go-simplejson"
 	"github.com/lierbai/nspider/core/common/request"
 )
 
@@ -20,33 +23,43 @@ func getRequestBySeed(row map[string]string) *request.Request {
 	return r
 }
 
-func spiderEngine() bool {
+func spiderEngine() (bool, error) {
 	// 爬虫流程控制
 	// 队列控制
-	// queue := list.New()
-	row := map[string]string{
-		"url":      "www.baidu.com",
-		"respType": "json",
-	}
-	r := getRequestBySeed(row)
+	var h = make(http.Header)
+	h.Add("t", "backend.dev.com")
+	r := request.NewRequest("GET", "http://backend.dev.com/api/gettest?name=lierbai", h, nil, "{\"action\":\"spider\"}", "json", "", nil, nil)
+	req, _ := r.GenHTTPRequest()
 	// 请求器 Fecher
-
 	// 获取代理
-	proxy, _ := url.Parse("127.0.0.1:8888")
-
 	client := &http.Client{
-		Transport: &http.Transport{
-			Proxy: http.ProxyURL(proxy),
-		},
+		CheckRedirect: r.GetRedirectFunc(),
 	}
-	req, _ = r.GenHTTPRequest()
-	resp, _ := client.Do(req)
+	if proxy, err := url.Parse("127.0.0.1:8888"); err != nil {
+		client = &http.Client{
+			CheckRedirect: r.GetRedirectFunc(),
+			Transport: &http.Transport{
+				Proxy: http.ProxyURL(proxy),
+			},
+		}
+	}
+	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
-	return true
+	// 解析器 Parser
+	bres, err := ioutil.ReadAll(resp.Body)
+	res, err := simplejson.NewJson([]byte(bres))
+	if err != nil {
+		fmt.Printf("json %v\n", err)
+		return false, err
+	}
+	fmt.Printf("%v\n", res)
+	return true, nil
 }
 
 // main go拷贝
 func main() {
+	b, _ := spiderEngine()
+	fmt.Printf("%v\n", b)
 }
