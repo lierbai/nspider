@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/bitly/go-simplejson"
-	"github.com/lierbai/nspider/core/common/mlog"
+	log "github.com/sirupsen/logrus"
 )
 
 // Request 请求
@@ -134,7 +134,7 @@ func (object *Request) setHeaderbyFile(headerFile string, replace bool) *Request
 	}
 	b, err := ioutil.ReadFile(headerFile)
 	if err != nil {
-		mlog.LogInst().LogError(err.Error())
+		log.Error(err.Error())
 		object.Header = nil
 		return object
 	}
@@ -150,7 +150,7 @@ func (object *Request) setHeaderByJSON(json *simplejson.Json, replace bool) *Req
 	}
 	headerArr, GetErr := json.Get("Header").Map()
 	if GetErr != nil {
-		mlog.LogInst().LogError(GetErr.Error())
+		log.Error(GetErr.Error())
 		return object
 	}
 	for k, v := range headerArr {

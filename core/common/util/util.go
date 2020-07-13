@@ -2,6 +2,7 @@
 package util
 
 import (
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"hash/crc32"
@@ -9,6 +10,9 @@ import (
 	"os"
 	"regexp"
 	"strings"
+
+	"github.com/bitly/go-simplejson"
+	log "github.com/sirupsen/logrus"
 
 	"golang.org/x/net/html/charset"
 )
@@ -29,6 +33,27 @@ func JsonpToJson(json string) string {
 	json = strings.Replace(json, "\\'", "", -1)
 	regDetail, _ := regexp.Compile("([^\\s\\:\\{\\,\\d\"]+|[a-z][a-z\\d]*)\\s*\\:")
 	return regDetail.ReplaceAllString(json, "\"$1\":")
+}
+
+// Load json_str -> simplejson.Json
+func Load(jsonStr string) *simplejson.Json {
+	res, err := simplejson.NewJson([]byte(jsonStr))
+	if err != nil {
+		log.Error(err)
+		return nil
+	}
+	return res
+}
+
+// Dump simplejson.Json -> json_str
+func Dump(jsonObject *simplejson.Json) string {
+	jsonStr, err := json.Marshal(jsonObject)
+	// res, err := simplejson.NewJson([]byte(jsonStr))
+	if err != nil {
+		log.Error(err)
+		return ""
+	}
+	return string(jsonStr)
 }
 
 //GetWDPath The GetWDPath gets the work directory path.

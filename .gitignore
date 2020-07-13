@@ -15,3 +15,7 @@
 # vendor/
 project/
 lj/
+logs/
+core/common/*/logs/
+core/common/*/conf.json
+core/common/*/*_test.go

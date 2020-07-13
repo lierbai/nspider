@@ -60,6 +60,8 @@ func spiderEngine() (bool, error) {
 
 // main go拷贝
 func main() {
-	b, _ := spiderEngine()
+	// b, _ := spiderEngine()
+	// logger.Info("哦哦")
+	b := "?"
 	fmt.Printf("%v\n", b)
 }

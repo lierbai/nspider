@@ -1,0 +1,18 @@
+{
+    "name": "app",
+    "version": "0.01",
+    "work_num": 10,
+    "max_wait_num": 12000,
+    "http_addr": "127.0.0.1:7774",
+    "etcd": [
+        "http://127.0.0.1:2379"
+    ],
+    "schedule": "redis",
+    "redis_addr": "127.0.0.1:6379",
+    "mysql": "root:123456@tcp(127.0.0.1:3306)/auto_db?charset=utf8",
+    "logdir":"logs",
+    "logsuffix": "_%Y-%m-%d.log",
+    "loglevel": 5,
+    "logrotationtime":24,
+    "logmaxtime":168
+}

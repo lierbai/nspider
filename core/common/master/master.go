@@ -3,8 +3,10 @@
 package master
 
 import (
-	"github.com/lierbai/nspider/core/common/mlog"
+	_ "github.com/lierbai/nspider/core/common/config"
+	_ "github.com/lierbai/nspider/core/common/logger"
 	"github.com/lierbai/nspider/core/scheduler"
+	log "github.com/sirupsen/logrus"
 )
 
 // Master 主控
@@ -20,14 +22,11 @@ type Master struct {
 
 // NewMaster new
 func NewMaster(taskname string) *Master {
-	mlog.StraceInst().Open()
 	master := &Master{taskname: taskname}
-	// 初始化文件日志
-	mlog.InitFilelog(false, "")
 	master.exitWhenComplete = true
 	master.sleeptype = "fixed"
 	master.startSleeptime = 0
-	mlog.StraceInst().Println("** start spider **")
+	log.Info("** start spider **")
 	return master
 }
 
