@@ -19,3 +19,4 @@ logs/
 core/common/*/logs/
 core/common/*/conf.json
 core/common/*/*_test.go
+core/*_test/

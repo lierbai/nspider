@@ -39,7 +39,7 @@ func JsonpToJson(json string) string {
 func Load(jsonStr string) *simplejson.Json {
 	res, err := simplejson.NewJson([]byte(jsonStr))
 	if err != nil {
-		log.Error(err)
+		log.Error("util.Load" + err.Error())
 		return nil
 	}
 	return res
@@ -50,7 +50,7 @@ func Dump(jsonObject *simplejson.Json) string {
 	jsonStr, err := json.Marshal(jsonObject)
 	// res, err := simplejson.NewJson([]byte(jsonStr))
 	if err != nil {
-		log.Error(err)
+		log.Error("util.Dump" + err.Error())
 		return ""
 	}
 	return string(jsonStr)
@@ -68,27 +68,19 @@ func GetWDPath() string {
 //IsDirExists The IsDirExists judges path is directory or not.
 func IsDirExists(path string) bool {
 	fi, err := os.Stat(path)
-
 	if err != nil {
 		return os.IsExist(err)
-	} else {
-		return fi.IsDir()
 	}
-
-	panic("util isDirExists not reached")
+	return fi.IsDir()
 }
 
 //IsFileExists The IsFileExists judges path is file or not.
 func IsFileExists(path string) bool {
 	fi, err := os.Stat(path)
-
 	if err != nil {
 		return os.IsExist(err)
-	} else {
-		return !fi.IsDir()
 	}
-
-	panic("util isFileExists not reached")
+	return !fi.IsDir()
 }
 
 //IsNum The IsNum judges string is number or not.

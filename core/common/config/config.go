@@ -3,7 +3,6 @@ package config
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"time"
@@ -18,6 +17,8 @@ type Config struct {
 	WorkNum         int           `json:"work_num"`
 	MaxWaitNum      int           `json:"max_wait_num"`
 	HttpAddr        string        `json:"http_addr"`
+	ProxyType       string        `json:"proxytype"`
+	ProxyAddr       string        `json:"proxyaddr"`
 	RedisAddr       string        `json:"redis_addr"`
 	ScheduleMode    string        `json:"schedule"`
 	Etcd            []string      `json:"etcd"`
@@ -36,15 +37,15 @@ func init() {
 	var err error
 
 	if file, err = os.OpenFile("conf.json", os.O_RDONLY, 0666); err != nil {
-		fmt.Println(err)
+		panic(err)
 	}
 
 	if bytes, err = ioutil.ReadAll(file); err != nil {
-		fmt.Println(err)
+		panic(err)
 	}
 
 	ConfigI = &Config{}
 	if err = json.Unmarshal(bytes, ConfigI); err != nil {
-		fmt.Println(err)
+		panic(err)
 	}
 }

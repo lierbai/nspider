@@ -1,67 +1,45 @@
 package main
 
 import (
-	"fmt"
-	"io/ioutil"
+	"encoding/json"
 	"net/http"
-	"net/url"
 
-	"github.com/bitly/go-simplejson"
+	_ "github.com/lierbai/nspider/core/common/config"
+	_ "github.com/lierbai/nspider/core/common/logger"
 	"github.com/lierbai/nspider/core/common/request"
+	log "github.com/sirupsen/logrus"
 )
 
-// Test 1
-type Test struct {
-	a int
-	b string
+type a struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Result  []b    `json:"result"`
 }
-
-func getRequestBySeed(row map[string]string) *request.Request {
-	url := ""
-	respType := "json"
-	r := request.NewRequest("GET", url, nil, nil, "", respType, "", nil, nil)
-	return r
-}
-
-func spiderEngine() (bool, error) {
-	// 爬虫流程控制
-	// 队列控制
-	var h = make(http.Header)
-	h.Add("t", "backend.dev.com")
-	r := request.NewRequest("GET", "http://backend.dev.com/api/gettest?name=lierbai", h, nil, "{\"action\":\"spider\"}", "json", "", nil, nil)
-	req, _ := r.GenHTTPRequest()
-	// 请求器 Fecher
-	// 获取代理
-	client := &http.Client{
-		CheckRedirect: r.GetRedirectFunc(),
-	}
-	if proxy, err := url.Parse("127.0.0.1:8888"); err != nil {
-		client = &http.Client{
-			CheckRedirect: r.GetRedirectFunc(),
-			Transport: &http.Transport{
-				Proxy: http.ProxyURL(proxy),
-			},
-		}
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return false, err
-	}
-	// 解析器 Parser
-	bres, err := ioutil.ReadAll(resp.Body)
-	res, err := simplejson.NewJson([]byte(bres))
-	if err != nil {
-		fmt.Printf("json %v\n", err)
-		return false, err
-	}
-	fmt.Printf("%v\n", res)
-	return true, nil
+type b struct {
+	Geader   string `json:"header"`
+	Name     string `json:"name"`
+	Passtime string `json:"passtime"`
+	Sid      string `json:"sid"`
+	Text     string `json:"text"`
+	Video    string `json:"video"`
 }
 
 // main go拷贝
 func main() {
-	// b, _ := spiderEngine()
-	// logger.Info("哦哦")
-	b := "?"
-	fmt.Printf("%v\n", b)
+	h := make(http.Header)
+	h.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.119 Safari/537.36")
+	h.Add("Cache-Control", "max-age=0")
+	h.Add("Connection", "keep-alive")
+	// User-Agent:
+	req := request.NewRequest("GET", "https://api.apiopen.top/getJoke?page=1&count=2&type=video", "", "", nil, h, nil, nil)
+	resp := req.Connect(nil, 10)
+	var data a
+	if err := json.Unmarshal([]byte(resp.Content), &data); err != nil {
+		log.Debug(err)
+	}
+	if data.Code == 200 {
+		for i := range data.Result {
+			log.Debug(data.Result[i])
+		}
+	}
 }

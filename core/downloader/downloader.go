@@ -1,12 +1,14 @@
-// Package downloader is the main module of GO_SPIDER for download page.
 package downloader
 
-import (
-	"github.com/lierbai/nspider/core/common/page"
-	"github.com/lierbai/nspider/core/common/request"
-)
+import "github.com/lierbai/nspider/core/common/request"
 
 // Downloader interface
 type Downloader interface {
-	Downloader(req *request.Request) *page.Page
+	// Download(req *request.Request) *request.Request
+	Download(args map[string]string) *request.Request
 }
+
+
+
+
+

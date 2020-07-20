@@ -10,5 +10,6 @@ require (
 	github.com/lestrrat-go/strftime v1.0.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sirupsen/logrus v1.6.0
-	golang.org/x/net v0.0.0-20200625001655-4c5254603344
+	github.com/tidwall/gjson v1.6.0
+	golang.org/x/net v0.0.0-20200707034311-ab3426394381
 )

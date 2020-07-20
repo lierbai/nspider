@@ -1,184 +1,164 @@
 package request
 
 import (
+	"compress/gzip"
+	"io"
 	"io/ioutil"
 	"net/http"
-	"os"
+	"net/url"
 	"strings"
+	"time"
 
-	"github.com/bitly/go-simplejson"
+	"github.com/lierbai/nspider/core/common/util"
 	log "github.com/sirupsen/logrus"
+	"github.com/tidwall/gjson"
+	"golang.org/x/net/html/charset"
 )
 
-// Request 请求
+// Request class
 type Request struct {
 	Method        string //请求方式
 	URL           string //处理后的链接
+	Payload       string
+	RespType      string
+	Params        map[string]string
 	Header        http.Header
 	Cookies       []*http.Cookie
-	Postdata      string
-	RespType      string
-	Urltag        string
-	checkRedirect func(req *http.Request, via []*http.Request) error
-	Meta          interface{}
+	CheckRedirect func(req *http.Request, via []*http.Request) error
 }
 
-// NewRequest new
-func NewRequest(
-	method string, url string, header http.Header, cookies []*http.Cookie, postdata string, respType string, urltag string,
-	checkRedirect func(req *http.Request, via []*http.Request) error, meta interface{}) *Request {
-	return &Request{method, url, header, cookies, postdata, urltag, respType, checkRedirect, meta}
+// Params        map[string]string
+
+// Response class
+type Response struct {
+	Status   int
+	Content  string
+	Header   http.Header
+	Cookies  []*http.Cookie
+	RespType string
 }
 
-// CopyRequest CopyRequestobject
-func (object *Request) CopyRequest() *Request {
-	temp := *object
-	return &temp
+// NewRequest new class
+func NewRequest(method string, url string, payload string, respType string, params map[string]string,
+	header http.Header,
+	cookies []*http.Cookie,
+	checkRedirect func(req *http.Request, via []*http.Request) error) *Request {
+	return &Request{method, url, respType, payload, params, header, cookies, checkRedirect}
 }
 
-// GenHTTPRequest 123
-func (object *Request) GenHTTPRequest() (*http.Request, error) {
-	// 先生成一个普通的请求.再填充相关的参数
-	httpreq, err := http.NewRequest(object.GetMethod(), object.GetURL(), strings.NewReader(object.GetPostdata()))
-	if header := object.GetHeader(); header != nil {
-		httpreq.Header = object.GetHeader()
+// params map[string]string,
+
+// QuickRequest qc
+func QuickRequest(method string, url string, payload string, respType string, params map[string]string) *Request {
+	return NewRequest(method, url, respType, payload, params, nil, nil, nil)
+}
+
+// Connect 连接
+func (r *Request) Connect(proxy *url.URL, t int) *Response {
+	if r.Method == "" {
+		r.Method = "GET"
 	}
-	if cookies := object.GetCookies(); cookies != nil {
-		for i := range cookies {
-			httpreq.AddCookie(cookies[i])
+	req, err := http.NewRequest(r.Method, r.URL, strings.NewReader(r.Payload))
+	if r.Params != nil {
+		q := req.URL.Query()
+		for key, val := range r.Params {
+			q.Add(key, val)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+	if r.Header != nil {
+		req.Header = r.Header
+	}
+	if r.Cookies != nil {
+		for i := range r.Cookies {
+			req.AddCookie(r.Cookies[i])
 		}
 	}
-	return httpreq, err
-}
-
-// GetURL get
-func (object *Request) GetURL() string {
-	return object.URL
-}
-
-// GetURLTag get
-func (object *Request) GetURLTag() string {
-	return object.Urltag
-}
-
-// GetMethod get
-func (object *Request) GetMethod() string {
-	return object.Method
-}
-
-// GetPostdata get
-func (object *Request) GetPostdata() string {
-	return object.Postdata
-}
-
-// GetHeader get
-func (object *Request) GetHeader() http.Header {
-	return object.Header
-}
-
-// GetCookies get
-func (object *Request) GetCookies() []*http.Cookie {
-	return object.Cookies
-}
-
-// GetResponceType get
-func (object *Request) GetResponceType() string {
-	return object.RespType
-}
-
-// GetRedirectFunc get
-func (object *Request) GetRedirectFunc() func(req *http.Request, via []*http.Request) error {
-	return object.checkRedirect
-}
-
-// GetMeta get
-func (object *Request) GetMeta() interface{} {
-	return object.Meta
-}
-
-// SetURL get
-func (object *Request) SetURL(url string) *Request {
-	object.URL = url
-	return object
-}
-
-// SetURLTag get
-func (object *Request) SetURLTag(urltag string) *Request {
-	object.Urltag = urltag
-	return object
-}
-
-// SetMethod get
-func (object *Request) SetMethod(method string) *Request {
-	object.Method = method
-	return object
-}
-
-// SetPostdata get
-func (object *Request) SetPostdata(postdata string) *Request {
-	object.Postdata = postdata
-	return object
-}
-
-// SetHeader get
-func (object *Request) SetHeader(header http.Header) *Request {
-	object.Header = header
-	return object
-}
-
-// setHeaderbyFile
-func (object *Request) setHeaderbyFile(headerFile string, replace bool) *Request {
-	_, err := os.Stat(headerFile)
+	transport := &http.Transport{}
+	// 操作代理
+	if proxy != nil {
+		transport.Proxy = http.ProxyURL(proxy)
+	}
+	client := &http.Client{
+		Transport: transport,
+	}
+	timeout := time.Duration(0) * time.Second
+	if t > 0 {
+		timeout = time.Duration(t) * time.Second
+	}
+	client.Timeout = timeout
+	resp, err := client.Do(req)
 	if err != nil {
-		return object
+		log.Error("request.Conent.Do" + err.Error())
+		return nil
 	}
-	b, err := ioutil.ReadFile(headerFile)
+	var body string
+	var sorbody []byte
+	if r.Header.Get("Content-Encoding") == "gzip" {
+		body = cCEAutoGS(r.Header.Get("Content-Type"), resp.Body)
+	} else {
+		if sorbody, err = ioutil.ReadAll(resp.Body); err != nil {
+			log.Error("request.Conent.ReadAll" + err.Error())
+			body = ""
+		} else {
+			body = string(sorbody)
+		}
+	}
+
+	defer resp.Body.Close()
+	return &Response{resp.StatusCode, body, resp.Header, resp.Cookies(), r.RespType}
+}
+
+// cCEAuto changeCharsetEncodingAuto
+func cCEAuto(c string, sor io.ReadCloser) string {
+	var err error
+	var sorbody []byte
+	destReader, err := charset.NewReader(sor, c)
 	if err != nil {
-		log.Error(err.Error())
-		object.Header = nil
-		return object
+		log.Error("request.cCEAuto.NewReader" + err.Error())
+		log.Debug("o")
+		if sorbody, err = ioutil.ReadAll(sor); err != nil {
+			log.Error("request.cCEAuto.ReadAllsor" + err.Error())
+			return ""
+		}
+	} else {
+		if sorbody, err = ioutil.ReadAll(destReader); err != nil {
+			log.Error("request.cCEAuto.ReadAlldestReader" + err.Error())
+			return ""
+		}
 	}
-	json, err := simplejson.NewJson(b)
-	object.setHeaderByJSON(json, replace)
-	return object
+	bodystr := string(sorbody)
+	return bodystr
 }
 
-// setHeaderByJSON read json file
-func (object *Request) setHeaderByJSON(json *simplejson.Json, replace bool) *Request {
-	if replace || object.Header == nil {
-		object.Header = make(http.Header)
+// cCEAutoGS changeCharsetEncodingAutoGzipSupport
+func cCEAutoGS(c string, sor io.ReadCloser) string {
+	var err error
+	gzipReader, err := gzip.NewReader(sor)
+	if err != nil {
+		log.Error("request.cCEAutoGS.gzipReader" + err.Error())
+		return cCEAuto(c, sor)
 	}
-	headerArr, GetErr := json.Get("Header").Map()
-	if GetErr != nil {
-		log.Error(GetErr.Error())
-		return object
+	defer gzipReader.Close()
+	destReader, err := charset.NewReader(gzipReader, c)
+	if err != nil {
+		log.Error("request.cCEAutoGS.destReader" + err.Error())
+		destReader = sor
 	}
-	for k, v := range headerArr {
-		object.Header.Add(k, v.(string))
+	var sorbody []byte
+	if sorbody, err = ioutil.ReadAll(destReader); err != nil {
+		log.Error("request.cCEAutoGS.ReadAll" + err.Error())
 	}
-	return object
+	bodystr := string(sorbody)
+	return bodystr
 }
 
-// SetCookies get
-func (object *Request) SetCookies(cookies []*http.Cookie) *Request {
-	object.Cookies = cookies
-	return object
-}
-
-// SetResponceType get
-func (object *Request) SetResponceType(respType string) *Request {
-	object.RespType = respType
-	return object
-}
-
-// SetRedirectFunc get
-func (object *Request) SetRedirectFunc(checkredirect func(req *http.Request, via []*http.Request) error) *Request {
-	object.checkRedirect = checkredirect
-	return object
-}
-
-// SetMeta get
-func (object *Request) SetMeta(meta interface{}) *Request {
-	object.Meta = meta
-	return object
+func convContent(body string, btype string) interface{} {
+	if btype == "json" {
+		if gjson.Valid(body) {
+			return gjson.Parse(body)
+		}
+		return util.Load(body)
+	}
+	return body
 }

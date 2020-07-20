@@ -15,16 +15,16 @@ import (
 
 func init() {
 	conf := config.ConfigI
-	if util.IsDirExists(conf.LogDir) {
+	if util.IsDirExists(conf.LogDir) != true {
 		if err := os.MkdirAll(conf.LogDir, 0755); err != nil {
 			panic(err)
 		}
 	}
-	logfile := path.Join(conf.LogDir, conf.Name)
+	logfile := path.Join(conf.LogDir, conf.Name+"_%Y-%m-%d."+conf.LogSuffix)
 	fsWriter, err := rotatelogs.New(
-		logfile+conf.LogSuffix,
+		logfile,
 		rotatelogs.WithMaxAge(conf.LogMaxTime*time.Hour),
-		rotatelogs.WithRotationTime(conf.LogMaxTime*time.Hour),
+		rotatelogs.WithRotationTime(conf.LogRotationTime*time.Hour),
 	)
 	if err != nil {
 		panic(err)
@@ -33,5 +33,6 @@ func init() {
 	log.SetReportCaller(true)
 	log.SetFormatter(formatter.NewLogFormatter())
 	log.SetOutput(multiWriter)
-	log.SetLevel(log.InfoLevel)
+	log.SetLevel(log.DebugLevel)
+	log.Debug("======== Spider Logging init ========")
 }
